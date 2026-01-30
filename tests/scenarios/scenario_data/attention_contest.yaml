@@ -1,0 +1,36 @@
+# Scenario: Attention Contest
+# Verifies that attention allocation affects probabilities
+
+name: "Attention Contest"
+description: |
+  When both players allocate attention to the same neutral space,
+  the probabilities reflect their relative attention.
+
+setup:
+  board_size: 5
+  territories: []  # Empty board
+
+moves:
+  player1:
+    "[2, 2]": 3  # 3 attention to center
+  player2:
+    "[2, 2]": 2  # 2 attention to center
+
+expected_influence:
+  - position: [2, 2]
+    # P1: 3 attention × 10 = 30
+    player1: 30.0
+    # P2: 2 attention × 10 = 20
+    player2: 20.0
+    # Neutral: self (5.0) + 4 neighbors × 1.0 = 9.0
+    neutral: 9.0
+
+assertions:
+  - description: "P1 has higher probability with more attention"
+    position: [2, 2]
+    # Total = 30 + 20 + 9 + K(1) = 60
+    # P1 prob = 30/60 = 0.5
+    # P2 prob = 20/60 = 0.333
+    expected_p1_prob_approx: 0.5
+    expected_p2_prob_approx: 0.333
+    tolerance: 0.01

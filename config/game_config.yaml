@@ -1,0 +1,127 @@
+# Strategic Influence - Game Configuration
+# =========================================
+# V2: Stone-count and combat mechanics
+#
+# This is the SINGLE SOURCE OF TRUTH for all game parameters.
+# No values should be hardcoded in the codebase.
+# Edit this file to change game mechanics, balance, or behavior.
+
+# =============================================================================
+# CORE GAME PARAMETERS
+# =============================================================================
+
+game:
+  # Board dimensions (NxN grid)
+  # Larger boards = longer games, more territory to contest
+  board_size: 5
+
+  # Total number of turns before the game ends
+  # More turns = more time for expansion and combat
+  num_turns: 10
+
+  # Combat mechanics
+  combat:
+    # Probability of a hit when rolling (50% = coin flip)
+    # Higher = faster combat, lower = longer battles
+    hit_chance: 0.5
+
+  # Territory growth mechanics
+  growth:
+    # Stones gained when choosing GROW action
+    stones_per_turn: 1
+
+  # Setup phase mechanics
+  setup:
+    # Stones placed per territory during setup
+    stones_per_placement: 1
+
+# =============================================================================
+# SIMULATION PARAMETERS
+# =============================================================================
+
+simulation:
+  # Default number of games to run in a simulation batch
+  default_num_games: 1000
+
+  # Number of parallel workers for batch simulations
+  # Set to 1 for sequential execution (easier debugging)
+  # Set higher for faster batch runs
+  parallel_workers: 4
+
+  # Random seed for reproducible simulations
+  # Set to null for random (non-reproducible) runs
+  # Set to an integer for deterministic, repeatable results
+  random_seed: null
+
+# =============================================================================
+# CLI DISPLAY OPTIONS
+# =============================================================================
+
+display:
+  # Symbols used to render the board
+  symbols:
+    player1: "1"
+    player2: "2"
+    neutral: "."
+
+  # Board rendering options
+  board:
+    # Width of each cell in characters
+    cell_width: 5
+    # Show coordinate labels
+    show_coordinates: true
+
+  # Verbosity settings for game output
+  verbosity:
+    # Show individual combat roll results
+    show_combat_rolls: true
+    # Show stone movement details
+    show_movements: true
+    # Show territory growth details
+    show_growth: true
+
+# =============================================================================
+# AI PLAYER CONFIGURATIONS
+# =============================================================================
+
+ai:
+  # Random agent settings
+  random:
+    name: "RandomBot"
+
+  # Aggressive heuristic agent settings
+  aggressive:
+    name: "AggressiveBot"
+    # Weight factors for action evaluation
+    weights:
+      # Priority for attacking enemy territories
+      attack_enemy: 1.0
+      # Priority for defending own territories (staying/growing)
+      defend_own: 0.8
+      # Priority for expanding into neutral spaces
+      expand_neutral: 0.5
+      # Bonus per stone count (prefer moving more stones)
+      stone_count_bonus: 0.2
+
+# =============================================================================
+# PARAMETER SWEEP PRESETS (for experiments)
+# =============================================================================
+
+experiments:
+  # Sweep hit chance to see how combat speed affects outcomes
+  hit_chance_sweep:
+    parameter: "game.combat.hit_chance"
+    values: [0.3, 0.4, 0.5, 0.6, 0.7]
+    runs_per_value: 500
+
+  # Sweep board size to see scaling effects
+  board_size_sweep:
+    parameter: "game.board_size"
+    values: [3, 5, 7, 9]
+    runs_per_value: 500
+
+  # Sweep number of turns
+  turns_sweep:
+    parameter: "game.num_turns"
+    values: [5, 10, 15, 20]
+    runs_per_value: 500

@@ -1,0 +1,39 @@
+# Scenario: Territory Defense
+# Verifies that owning a territory provides defensive advantage
+
+name: "Territory Defense"
+description: |
+  A player defending their own territory has an inherent advantage
+  from the territory's self-influence.
+
+setup:
+  board_size: 5
+  territories:
+    - position: [2, 2]
+      owner: PLAYER_1
+
+moves:
+  player1:
+    "[2, 2]": 2  # Defend with 2 attention
+  player2:
+    "[2, 2]": 3  # Attack with 3 attention
+
+expected_influence:
+  - position: [2, 2]
+    # P1: self-influence (5.0) + attention (2 × 10) = 25.0
+    player1: 25.0
+    # P2: attention only = 3 × 10 = 30.0
+    player2: 30.0
+    # Neutral: 4 neutral neighbors × 1.0 = 4.0 (no self since P1 owns)
+    neutral: 4.0
+
+assertions:
+  - description: "Territory self-influence balances attention deficit"
+    position: [2, 2]
+    # P1 has 25 influence, P2 has 30, neutral has 4 + K(1) = 5
+    # Total = 25 + 30 + 5 = 60
+    # P1 prob = 25/60 ≈ 0.417
+    # P2 prob = 30/60 = 0.5
+    expected_p1_prob_approx: 0.417
+    expected_p2_prob_approx: 0.5
+    tolerance: 0.01

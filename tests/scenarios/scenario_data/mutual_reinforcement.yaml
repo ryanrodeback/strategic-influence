@@ -1,0 +1,54 @@
+# Scenario: Mutual Reinforcement
+# Verifies that adjacent territories reinforce each other
+
+name: "Mutual Reinforcement"
+description: |
+  Adjacent territories provide mutual influence, making clusters
+  stronger than isolated territories.
+
+setup:
+  board_size: 5
+  # Place two adjacent P1 territories
+  territories:
+    - position: [2, 2]
+      owner: PLAYER_1
+    - position: [2, 3]
+      owner: PLAYER_1
+
+moves:
+  player1: {}
+  player2: {}
+
+expected_influence:
+  - position: [2, 2]
+    # P1 influence:
+    #   - self = 5.0
+    #   - neighbor at (2,3) = 1.0
+    #   Total = 6.0
+    player1: 6.0
+    player2: 0.0
+    # Neutral influence:
+    #   - 3 neutral neighbors (up, down, left) × 1.0 = 3.0
+    #   - no edges (center position)
+    #   - no self (owned by P1)
+    neutral: 3.0
+
+  - position: [2, 3]
+    # P1 influence:
+    #   - self = 5.0
+    #   - neighbor at (2,2) = 1.0
+    #   Total = 6.0
+    player1: 6.0
+    player2: 0.0
+    # Neutral influence:
+    #   - 3 neutral neighbors (up, down, right) × 1.0 = 3.0
+    neutral: 3.0
+
+assertions:
+  - description: "Paired territories are stronger than solo"
+    position: [2, 2]
+    # P1 has 6.0 influence vs solo's 5.0
+    # Total = 6 + 0 + 3 + K(1) = 10
+    # P1 prob = 6/10 = 0.6
+    expected_p1_prob_approx: 0.6
+    tolerance: 0.01
