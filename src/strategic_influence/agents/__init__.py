@@ -11,6 +11,11 @@ Baseline agents:
 - AggressiveBot: Attack-focused heuristic strategy
 - GreedyStrategic: Fast greedy strategy (Minimax insights without search)
 
+MCTS Variants (improved evaluation strategies):
+- MCTSHeuristicEval: MCTS with heuristic evaluation at leaf nodes
+- MCTSMinimaxEval: MCTS with depth-1 minimax evaluation at leaf nodes
+- MCTSHeuristicRollout: MCTS with pure greedy heuristic rollouts
+
 Utility agents:
 - HumanAgent: Interactive human player
 """
@@ -24,6 +29,12 @@ from .intuition_agent import IntuitionAgent
 from .minimax_agent import MinimaxAgent
 from .improved_mcts_agent import ImprovedMCTSAgent
 from .greedy_strategic_agent import GreedyStrategicAgent
+from .heuristic_minimax_agent import HeuristicMinimaxAgent
+from .mcts_variants import (
+    MCTSHeuristicEval,
+    MCTSMinimaxEval,
+    MCTSHeuristicRollout,
+)
 
 __all__ = [
     "Agent",
@@ -35,4 +46,8 @@ __all__ = [
     "MinimaxAgent",
     "ImprovedMCTSAgent",
     "GreedyStrategicAgent",
+    "HeuristicMinimaxAgent",
+    "MCTSHeuristicEval",
+    "MCTSMinimaxEval",
+    "MCTSHeuristicRollout",
 ]
