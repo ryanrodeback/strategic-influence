@@ -38,6 +38,7 @@ from ..evaluation import (
     BALANCED_WEIGHTS,
     EvaluationWeights,
 )
+from .common import center_aware_setup
 
 
 class MinimaxAgent:
@@ -91,25 +92,7 @@ class MinimaxAgent:
         config: GameConfig,
     ) -> SetupAction:
         """Choose setup position - prefer center."""
-        board_size = config.board_size
-        mid = board_size // 2
-
-        valid_positions = [
-            Position(r, c)
-            for r in range(board_size)
-            for c in range(board_size)
-            if Position(r, c).is_in_setup_zone(board_size, player)
-            and state.board.get_owner(Position(r, c)) == Owner.NEUTRAL
-        ]
-
-        if not valid_positions:
-            raise ValueError(f"No valid setup positions for {player}")
-
-        def center_distance(pos: Position) -> float:
-            return abs(pos.row - mid) + abs(pos.col - mid)
-
-        valid_positions.sort(key=center_distance)
-        return SetupAction(player=player, position=valid_positions[0])
+        return center_aware_setup(state, player, config)
 
     def choose_actions(
         self,

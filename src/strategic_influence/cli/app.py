@@ -15,23 +15,14 @@ import typer
 from rich.console import Console
 
 from ..config import load_config, create_default_config, GameConfig
-from ..types import Owner, Position, TurnMoves
-from ..engine import create_game, apply_turn, create_move_from_positions
-from ..agents import RandomAgent, GreedyAgent, HumanAgent
+from ..types import Owner, Position, TurnActions, SetupAction, PlayerTurnActions
+from ..engine import create_game, apply_turn, apply_setup
+from ..agents import RandomAgent, DefensiveAgent, HumanAgent, GreedyStrategicAgent
 from ..agents.protocol import Agent
 from ..simulation import run_simulation, run_parameter_sweep, ParameterSweep
 from ..simulation.statistics import analysis_report
-from .renderer import (
-    render_welcome,
-    render_game_state,
-    render_attention_phase,
-    animate_resolution,
-    render_turn_summary,
-    render_game_over,
-    render_simulation_progress,
-    get_player_input,
-    console,
-)
+
+console = Console()
 
 
 app = typer.Typer(
@@ -49,10 +40,15 @@ def get_agent(agent_type: str, seed: int | None = None) -> Agent:
         return HumanAgent()
     elif agent_type == "random":
         return RandomAgent(seed=seed)
-    elif agent_type == "greedy":
-        return GreedyAgent(seed=seed)
+    elif agent_type == "greedy" or agent_type == "greedy_strategic":
+        return GreedyStrategicAgent(seed=seed)
+    elif agent_type == "defensive":
+        return DefensiveAgent(seed=seed)
     else:
-        raise typer.BadParameter(f"Unknown agent type: {agent_type}")
+        raise typer.BadParameter(
+            f"Unknown agent type: {agent_type}. "
+            f"Valid options: human, random, greedy, greedy_strategic, defensive"
+        )
 
 
 def load_game_config(config_path: Path | None) -> GameConfig:
@@ -77,102 +73,44 @@ def play(
     opponent: str = typer.Option(
         "greedy",
         "--opponent", "-o",
-        help="Opponent type: random, greedy",
+        help="Opponent type: random, greedy, defensive",
     ),
     seed: Optional[int] = typer.Option(
         None,
         "--seed", "-s",
         help="Random seed for reproducibility",
     ),
-    animation_speed: float = typer.Option(
-        0.5,
-        "--speed",
-        help="Animation speed (seconds per step, lower = faster)",
-    ),
 ) -> None:
-    """Play a game against an AI opponent."""
+    """Play a game against an AI opponent.
+
+    NOTE: Human player support requires visualizer integration.
+    For now, this command simulates two AI players.
+    """
     config = load_game_config(config_file)
 
-    render_welcome()
-    time.sleep(1)
+    console.print("\n[bold]Strategic Influence[/bold]")
+    console.print(f"[dim]Playing vs: {opponent}[/dim]\n")
 
     # Create opponent
     opp = get_agent(opponent, seed=(seed + 1000 if seed else None))
-    opp.reset()
 
-    console.print(f"\n[bold]Playing against: [red]{opp.name}[/red][/bold]")
-    console.print("[dim]Press Enter to start...[/dim]")
-    try:
-        input()
-    except EOFError:
-        pass
+    # Create human player (as random for now, since interactive play needs renderer)
+    player1 = RandomAgent(seed=seed)
 
-    # Initialize game
-    rng = Random(seed)
-    state = create_game(config)
+    # Play game
+    from ..engine import simulate_game
+    state = simulate_game(config, player1, opp, seed=seed)
 
-    # Game loop
-    while not state.is_complete:
-        # Show current state
-        render_game_state(state, config)
-
-        console.print(f"\n[bold cyan]Turn {state.current_turn + 1}[/bold cyan]")
-        console.print()
-
-        # Get player's move
-        positions = get_player_input(config)
-        if not positions:
-            console.print("[yellow]Game aborted.[/yellow]")
-            return
-
-        p1_move = create_move_from_positions(Owner.PLAYER_1, positions)
-
-        # Get opponent's move
-        console.print(f"\n[red]{opp.name} is thinking...[/red]")
-        time.sleep(0.5)
-        p2_move = opp.choose_move(state, Owner.PLAYER_2, config)
-
-        # Show attention phase
-        render_attention_phase(state, config, p1_move, p2_move)
-
-        console.print("[dim]Press Enter to resolve...[/dim]")
-        try:
-            input()
-        except EOFError:
-            pass
-
-        # Apply turn
-        moves = TurnMoves(
-            player1_move=p1_move,
-            player2_move=p2_move,
-            turn_number=state.current_turn + 1,
-        )
-        state = apply_turn(state, moves, config, rng)
-
-        # Animate resolution
-        turn_result = state.turn_history[-1]
-        animate_resolution(
-            turn_result.board_before,
-            turn_result.board_after,
-            turn_result.resolutions,
-            p1_move,
-            p2_move,
-            config,
-            delay=animation_speed,
-        )
-
-        # Show turn summary
-        render_turn_summary(turn_result, config)
-
-        if not state.is_complete:
-            console.print("\n[dim]Press Enter to continue...[/dim]")
-            try:
-                input()
-            except EOFError:
-                pass
-
-    # Game over
-    render_game_over(state, config)
+    # Show results
+    console.print(state.board)
+    console.print(f"\n[bold]Game Over[/bold]")
+    counts = state.board.count_territories()
+    console.print(f"Player 1: {counts[Owner.PLAYER_1]} territories")
+    console.print(f"Player 2: {counts[Owner.PLAYER_2]} territories")
+    if state.winner:
+        console.print(f"[green]Winner: {state.winner}[/green]")
+    else:
+        console.print("[yellow]Result: Draw[/yellow]")
 
 
 @app.command()
@@ -185,27 +123,17 @@ def watch(
     player1: str = typer.Option(
         "random",
         "--p1",
-        help="Player 1 type: random, greedy",
+        help="Player 1 type: random, greedy, defensive",
     ),
     player2: str = typer.Option(
         "greedy",
         "--p2",
-        help="Player 2 type: random, greedy",
+        help="Player 2 type: random, greedy, defensive",
     ),
     seed: Optional[int] = typer.Option(
         None,
         "--seed", "-s",
         help="Random seed for reproducibility",
-    ),
-    animation_speed: float = typer.Option(
-        0.3,
-        "--speed",
-        help="Animation speed (seconds per step)",
-    ),
-    auto: bool = typer.Option(
-        False,
-        "--auto",
-        help="Auto-advance without waiting for Enter",
     ),
 ) -> None:
     """Watch two AI players compete."""
@@ -213,68 +141,23 @@ def watch(
 
     p1 = get_agent(player1, seed=seed)
     p2 = get_agent(player2, seed=(seed + 1000 if seed else None))
-    p1.reset()
-    p2.reset()
 
-    render_welcome()
-    console.print(f"\n[bold][cyan]{p1.name}[/cyan] vs [red]{p2.name}[/red][/bold]")
+    console.print(f"\n[bold]Watching: [cyan]{p1.name}[/cyan] vs [red]{p2.name}[/red][/bold]\n")
 
-    if not auto:
-        console.print("[dim]Press Enter to start...[/dim]")
-        try:
-            input()
-        except EOFError:
-            pass
+    from ..engine import simulate_game
+    state = simulate_game(config, p1, p2, seed=seed)
 
-    rng = Random(seed)
-    state = create_game(config)
-
-    while not state.is_complete:
-        render_game_state(state, config)
-
-        console.print(f"\n[bold]Turn {state.current_turn + 1}[/bold]")
-        time.sleep(animation_speed)
-
-        # Get moves
-        p1_move = p1.choose_move(state, Owner.PLAYER_1, config)
-        p2_move = p2.choose_move(state, Owner.PLAYER_2, config)
-
-        # Show attention phase
-        render_attention_phase(state, config, p1_move, p2_move)
-        time.sleep(animation_speed * 2)
-
-        # Apply turn
-        moves = TurnMoves(
-            player1_move=p1_move,
-            player2_move=p2_move,
-            turn_number=state.current_turn + 1,
-        )
-        state = apply_turn(state, moves, config, rng)
-
-        # Animate resolution
-        turn_result = state.turn_history[-1]
-        animate_resolution(
-            turn_result.board_before,
-            turn_result.board_after,
-            turn_result.resolutions,
-            p1_move,
-            p2_move,
-            config,
-            delay=animation_speed,
-        )
-
-        render_turn_summary(turn_result, config)
-
-        if not state.is_complete and not auto:
-            console.print("\n[dim]Press Enter to continue...[/dim]")
-            try:
-                input()
-            except EOFError:
-                pass
-        elif not state.is_complete:
-            time.sleep(animation_speed * 2)
-
-    render_game_over(state, config)
+    # Show final board
+    console.print(state.board)
+    console.print(f"\n[bold]Game Over (Turn {state.current_turn})[/bold]")
+    counts = state.board.count_territories()
+    console.print(f"[cyan]{p1.name}[/cyan]: {counts[Owner.PLAYER_1]} territories")
+    console.print(f"[red]{p2.name}[/red]: {counts[Owner.PLAYER_2]} territories")
+    if state.winner:
+        winner_name = p1.name if state.winner == Owner.PLAYER_1 else p2.name
+        console.print(f"[green]Winner: {winner_name}[/green]")
+    else:
+        console.print("[yellow]Result: Draw[/yellow]")
 
 
 @app.command()

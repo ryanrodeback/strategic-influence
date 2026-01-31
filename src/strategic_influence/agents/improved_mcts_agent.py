@@ -36,6 +36,7 @@ from ..types import (
 from ..config import GameConfig
 from ..engine import apply_turn
 from ..evaluation import is_position_threatened
+from .common import center_aware_setup
 
 
 @dataclass
@@ -110,28 +111,7 @@ class ImprovedMCTSAgent:
         config: GameConfig,
     ) -> SetupAction:
         """Choose setup position - prefer center."""
-        board_size = config.board_size
-        mid = board_size // 2
-
-        valid_positions = [
-            Position(r, c)
-            for r in range(board_size)
-            for c in range(board_size)
-            if Position(r, c).is_in_setup_zone(board_size, player)
-            and state.board.get_owner(Position(r, c)) == Owner.NEUTRAL
-        ]
-
-        if not valid_positions:
-            raise ValueError(f"No valid setup positions for {player}")
-
-        def center_distance(pos: Position) -> float:
-            return abs(pos.row - mid) + abs(pos.col - mid)
-
-        valid_positions.sort(key=center_distance)
-        best_dist = center_distance(valid_positions[0])
-        best = [p for p in valid_positions if center_distance(p) <= best_dist + 1]
-
-        return SetupAction(player=player, position=self._rng.choice(best))
+        return center_aware_setup(state, player, config)
 
     def choose_actions(
         self,

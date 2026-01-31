@@ -21,6 +21,7 @@ from ..types import (
     create_simple_move_action,
 )
 from ..config import GameConfig
+from .common import center_aware_setup
 
 
 class AggressiveAgent:
@@ -57,27 +58,7 @@ class AggressiveAgent:
         config: GameConfig,
     ) -> SetupAction:
         """Choose center position in setup zone for best expansion potential."""
-        board_size = config.board_size
-        mid = board_size // 2
-
-        # Find all valid setup positions
-        valid_positions = [
-            Position(r, c)
-            for r in range(board_size)
-            for c in range(board_size)
-            if Position(r, c).is_in_setup_zone(board_size, player)
-            and state.board.get_owner(Position(r, c)) == Owner.NEUTRAL
-        ]
-
-        if not valid_positions:
-            raise ValueError(f"No valid setup positions for {player}")
-
-        # Prefer positions closer to center of board
-        def center_distance(pos: Position) -> float:
-            return abs(pos.row - mid) + abs(pos.col - mid)
-
-        valid_positions.sort(key=center_distance)
-        return SetupAction(player=player, position=valid_positions[0])
+        return center_aware_setup(state, player, config)
 
     def choose_actions(
         self,

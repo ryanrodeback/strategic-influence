@@ -10,7 +10,6 @@ from random import Random
 
 from ..types import (
     Owner,
-    Position,
     GameState,
     SetupAction,
     PlayerTurnActions,
@@ -19,6 +18,7 @@ from ..types import (
     create_action_from_move_type,
 )
 from ..config import GameConfig
+from .common import random_setup
 
 
 class RandomAgent:
@@ -52,23 +52,7 @@ class RandomAgent:
         config: GameConfig,
     ) -> SetupAction:
         """Choose a random position in the player's setup zone."""
-        board_size = config.board_size
-
-        # Find all valid setup positions
-        valid_positions = [
-            Position(r, c)
-            for r in range(board_size)
-            for c in range(board_size)
-            if Position(r, c).is_in_setup_zone(board_size, player)
-            and state.board.get_owner(Position(r, c)) == Owner.NEUTRAL
-        ]
-
-        if not valid_positions:
-            raise ValueError(f"No valid setup positions for {player}")
-
-        # Pick randomly
-        chosen = self._rng.choice(valid_positions)
-        return SetupAction(player=player, position=chosen)
+        return random_setup(state, player, config, self._rng)
 
     def choose_actions(
         self,

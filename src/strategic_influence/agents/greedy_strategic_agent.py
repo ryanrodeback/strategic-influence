@@ -26,6 +26,7 @@ from ..types import (
     create_simple_move_action,
 )
 from ..config import GameConfig
+from .common import find_valid_setup_positions
 
 
 class GreedyStrategicAgent:
@@ -59,16 +60,7 @@ class GreedyStrategicAgent:
         board_size = config.board_size
         mid = board_size // 2
 
-        valid_positions = [
-            Position(r, c)
-            for r in range(board_size)
-            for c in range(board_size)
-            if Position(r, c).is_in_setup_zone(board_size, player)
-            and state.board.get_owner(Position(r, c)) == Owner.NEUTRAL
-        ]
-
-        if not valid_positions:
-            raise ValueError(f"No valid setup positions for {player}")
+        valid_positions = find_valid_setup_positions(state, player, config)
 
         def setup_score(pos: Position) -> float:
             dist = abs(pos.row - mid) + abs(pos.col - mid)

@@ -32,6 +32,7 @@ from ..evaluation import (
     can_safely_divide,
     turns_until_threat_reaches,
 )
+from .common import find_valid_setup_positions
 
 
 class IntuitionAgent:
@@ -69,19 +70,10 @@ class IntuitionAgent:
         board_size = config.board_size
         mid = board_size // 2
 
-        valid_positions = [
-            Position(r, c)
-            for r in range(board_size)
-            for c in range(board_size)
-            if Position(r, c).is_in_setup_zone(board_size, player)
-            and state.board.get_owner(Position(r, c)) == Owner.NEUTRAL
-        ]
-
-        if not valid_positions:
-            raise ValueError(f"No valid setup positions for {player}")
+        valid_positions = find_valid_setup_positions(state, player, config)
 
         # Prefer positions closer to center (more expansion options)
-        def center_score(pos: Position) -> float:
+        def center_score(pos) -> float:
             dist = abs(pos.row - mid) + abs(pos.col - mid)
             # Also prefer positions with more neighbors
             num_neighbors = len(pos.neighbors(board_size))
