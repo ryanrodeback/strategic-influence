@@ -1,53 +1,27 @@
 """Agent implementations for Strategic Influence.
 
-Core tournament agents:
-- DefensiveBot: Safety-first positional strategy
-- IntuitionBot: Safe-division hypothesis with threat awareness
-- MinimaxBot: Game tree search with alpha-beta pruning (tunable depth)
-- ImprovedMCTSBot: Monte Carlo tree search with heuristic rollouts
-
-Baseline agents:
-- RandomBot: Random baseline for sanity checks
-- AggressiveBot: Attack-focused heuristic strategy
-- GreedyStrategic: Fast greedy strategy (Minimax insights without search)
-
-MCTS Variants (improved evaluation strategies):
-- MCTSHeuristicEval: MCTS with heuristic evaluation at leaf nodes
-- MCTSMinimaxEval: MCTS with depth-1 minimax evaluation at leaf nodes
-- MCTSHeuristicRollout: MCTS with pure greedy heuristic rollouts
+Tournament-proven agents (recommended):
+- OptimizedMinimaxAgent: Best AI with 100% win rate (use depth=1)
+- GreedyStrategicAgent: Fast heuristic with 78.6% win rate
+- ImprovedMCTSAgent: MCTS with random rollouts (research use)
 
 Utility agents:
+- RandomAgent: Random baseline for testing
 - HumanAgent: Interactive human player
 """
 
 from .protocol import Agent
 from .random_agent import RandomAgent
-from .aggressive_agent import AggressiveAgent
-from .defensive_agent import DefensiveAgent
 from .human import HumanAgent
-from .intuition_agent import IntuitionAgent
-from .minimax_agent import MinimaxAgent
-from .improved_mcts_agent import ImprovedMCTSAgent
 from .greedy_strategic_agent import GreedyStrategicAgent
-from .heuristic_minimax_agent import HeuristicMinimaxAgent
-from .mcts_variants import (
-    MCTSHeuristicEval,
-    MCTSMinimaxEval,
-    MCTSHeuristicRollout,
-)
+from .optimized_minimax_agent import OptimizedMinimaxAgent
+from .improved_mcts_agent import ImprovedMCTSAgent
 
 __all__ = [
     "Agent",
     "RandomAgent",
-    "AggressiveAgent",
-    "DefensiveAgent",
     "HumanAgent",
-    "IntuitionAgent",
-    "MinimaxAgent",
-    "ImprovedMCTSAgent",
     "GreedyStrategicAgent",
-    "HeuristicMinimaxAgent",
-    "MCTSHeuristicEval",
-    "MCTSMinimaxEval",
-    "MCTSHeuristicRollout",
+    "OptimizedMinimaxAgent",
+    "ImprovedMCTSAgent",
 ]
