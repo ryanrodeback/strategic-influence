@@ -35,6 +35,7 @@ from .mcts_variants import (
     MCTSMinimaxEval,
     MCTSHeuristicRollout,
 )
+from .expectimax_agent import ExpectimaxAgent
 
 __all__ = [
     "Agent",
@@ -50,4 +51,5 @@ __all__ = [
     "MCTSHeuristicEval",
     "MCTSMinimaxEval",
     "MCTSHeuristicRollout",
+    "ExpectimaxAgent",
 ]
