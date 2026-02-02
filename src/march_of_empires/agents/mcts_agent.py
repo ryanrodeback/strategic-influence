@@ -64,9 +64,9 @@ class MCTSAgent:
     def __init__(
         self,
         seed: int | None = None,
-        num_simulations: int = 100,
+        num_simulations: int = 50,
         exploration_c: float = 1.414,
-        rollout_depth: int = 15,
+        rollout_depth: int = 10,
     ):
         self._name = "MCTS"
         self._rng = random.Random(seed)
@@ -290,47 +290,66 @@ class MCTSAgent:
         player: Player,
         config: GameConfig,
     ) -> Action:
-        """Quick heuristic for rollout move selection."""
+        """Quick heuristic for rollout move selection - expansion focused."""
         armies = list(board.armies_of(player))
         if not armies:
             return PassAction(army_id=-1)
 
         army = self._rng.choice(armies)
 
-        # 30% random, 70% heuristic
-        if self._rng.random() < 0.3:
-            return self._random_action(army, board, player, config)
-
-        # Heuristic: prioritize capturing, then expansion, then moving toward enemy
-        enemy = player.opponent()
-
-        # Check for capture opportunity
-        for settlement in board.settlements_of(enemy):
-            armies_on_corner = list(board.armies_at(settlement.position))
-            friendly_on_corner = [a for a in armies_on_corner if a.owner == player]
-            is_defended = any(a.owner == enemy for a in armies_on_corner)
-            needed = config.capture.defended_armies_required if is_defended else config.capture.undefended_armies_required
-
-            if len(friendly_on_corner) >= needed - 1:
-                # Try to join the attack
-                if self._can_reach(army, settlement.position, board, player, config):
-                    return MoveAction(army_id=army.id, to_position=settlement.position)
-
-        # Try to settle if on corner
+        # PRIORITIZE SETTLING - this is the key to winning
         if isinstance(army.position, CornerCoord):
             if can_settle(army, board, config, True):
-                if self._rng.random() < 0.5:  # 50% chance to settle
+                # Check if settling gains territory
+                my_hexes = board.friendly_hexes(player)
+                adjacent = army.position.valid_adjacent_hexes(config.board_radius)
+                new_hexes = len([h for h in adjacent if h not in my_hexes])
+                if new_hexes >= 1:
                     return SettleAction(army_id=army.id)
 
-        # Move toward enemy
-        enemy_settlements = list(board.settlements_of(enemy))
-        if enemy_settlements:
-            target = self._rng.choice(enemy_settlements)
-            move = self._move_toward(army, target.position, board, player, config)
+        # 20% random for exploration
+        if self._rng.random() < 0.2:
+            return self._random_action(army, board, player, config)
+
+        # Move toward nearest unsettled corner for expansion
+        best_corner = self._find_nearest_unsettled_corner(army, board, player, config)
+        if best_corner:
+            move = self._move_toward(army, best_corner, board, player, config)
             if move:
                 return move
 
         return self._random_action(army, board, player, config)
+
+    def _find_nearest_unsettled_corner(
+        self,
+        army: Army,
+        board: GameBoard,
+        player: Player,
+        config: GameConfig,
+    ) -> CornerCoord | None:
+        """Find the nearest unsettled corner that would gain territory."""
+        my_hexes = board.friendly_hexes(player)
+        best_corner = None
+        best_score = float('-inf')
+
+        for corner in board.all_corners():
+            if board.settlement_at(corner) is not None:
+                continue
+
+            # Score by new hexes - distance
+            adjacent = corner.valid_adjacent_hexes(config.board_radius)
+            new_hexes = len([h for h in adjacent if h not in my_hexes])
+            if new_hexes < 1:
+                continue
+
+            dist = self._distance_to_corner(army.position, corner, config)
+            score = new_hexes * 3.0 - dist * 2.0
+
+            if score > best_score:
+                best_score = score
+                best_corner = corner
+
+        return best_corner
 
     def _random_action(
         self,
@@ -393,27 +412,26 @@ class MCTSAgent:
         config: GameConfig,
         armies_on_corners: set[int],
     ) -> list[Action]:
-        """Fallback greedy action selection."""
+        """Fallback greedy action selection - expansion focused."""
         actions: list[Action] = []
 
         for army in board.armies_of(player):
             started_on_corner = army.id in armies_on_corners
 
-            # Try settling first
+            # Try settling first - this is the key to winning
             if started_on_corner and can_settle(army, board, config, True):
-                actions.append(SettleAction(army_id=army.id))
-                continue
+                if isinstance(army.position, CornerCoord):
+                    my_hexes = board.friendly_hexes(player)
+                    adjacent = army.position.valid_adjacent_hexes(config.board_radius)
+                    new_hexes = len([h for h in adjacent if h not in my_hexes])
+                    if new_hexes >= 1:
+                        actions.append(SettleAction(army_id=army.id))
+                        continue
 
-            # Otherwise move toward enemy
-            enemy = player.opponent()
-            enemy_settlements = list(board.settlements_of(enemy))
-
-            if enemy_settlements:
-                closest = min(
-                    enemy_settlements,
-                    key=lambda s: self._distance_to_corner(army.position, s.position, config)
-                )
-                move = self._move_toward(army, closest.position, board, player, config)
+            # Move toward best unsettled corner for expansion
+            best_corner = self._find_nearest_unsettled_corner(army, board, player, config)
+            if best_corner:
+                move = self._move_toward(army, best_corner, board, player, config)
                 if move:
                     actions.append(move)
                     continue

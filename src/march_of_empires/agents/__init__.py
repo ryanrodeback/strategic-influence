@@ -7,6 +7,9 @@ from .aggressive_agent import AggressiveAgent
 from .defensive_agent import DefensiveAgent
 from .balanced_agent import BalancedHeuristicAgent
 from .mcts_agent import MCTSAgent
+from .minimax_agent import MinimaxAgent
+from .territory_rush_agent import TerritoryRushAgent
+from .greedy_settler_agent import GreedySettlerAgent
 
 __all__ = [
     "Agent",
@@ -16,4 +19,7 @@ __all__ = [
     "DefensiveAgent",
     "BalancedHeuristicAgent",
     "MCTSAgent",
+    "MinimaxAgent",
+    "TerritoryRushAgent",
+    "GreedySettlerAgent",
 ]

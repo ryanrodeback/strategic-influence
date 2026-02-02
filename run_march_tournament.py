@@ -20,10 +20,10 @@ from march_of_empires import (
 from march_of_empires.agents import (
     RandomAgent,
     ExpansionAgent,
-    AggressiveAgent,
-    DefensiveAgent,
-    BalancedHeuristicAgent,
     MCTSAgent,
+    MinimaxAgent,
+    TerritoryRushAgent,
+    GreedySettlerAgent,
 )
 from march_of_empires.tournament import run_tournament
 from march_of_empires.game import run_game
@@ -31,14 +31,23 @@ from march_of_empires.cli.renderer import render_game_state
 
 
 def create_agents():
-    """Create all agents for the tournament."""
+    """Create all agents for the tournament.
+
+    Includes the improved agents:
+    - Random: Baseline
+    - Expansion: Original best agent
+    - MCTS: Improved with expansion-focused rollouts
+    - Minimax: Alpha-beta search with position evaluation
+    - TerritoryRush: Ultra-aggressive expansion
+    - GreedySettler: Simple but effective greedy expansion
+    """
     return [
         RandomAgent(seed=42),
         ExpansionAgent(seed=42),
-        AggressiveAgent(seed=42),
-        DefensiveAgent(seed=42),
-        BalancedHeuristicAgent(seed=42),
-        MCTSAgent(seed=42, num_simulations=50),  # Reduced for speed
+        MCTSAgent(seed=42, num_simulations=100),  # Balanced for speed
+        MinimaxAgent(seed=42, max_depth=2),  # Reduced for speed
+        TerritoryRushAgent(seed=42),
+        GreedySettlerAgent(seed=42),
     ]
 
 
@@ -54,11 +63,8 @@ def analyze_strategies(tournament_result):
     print("\n--- Win Rate by Strategy Type ---")
     strategy_types = {
         "Random": ["Random"],
-        "Growth-focused": ["Expansion"],
-        "Combat-focused": ["Aggressive"],
-        "Safety-focused": ["Defensive"],
-        "Multi-factor": ["Balanced"],
-        "Search-based": ["MCTS"],
+        "Growth-focused": ["Expansion", "TerritoryRush", "GreedySettler"],
+        "Search-based": ["MCTS", "Minimax"],
     }
 
     for strategy_type, agent_names in strategy_types.items():
@@ -107,35 +113,29 @@ def analyze_strategies(tournament_result):
     print(f"  Best performing: {top_agent}")
     print(f"  Worst performing: {bottom_agent}")
 
-    # Check if expansion beats aggressive (territory > combat early)
-    exp_vs_agg = tournament_result.head_to_head.get(("Aggressive", "Expansion"))
-    if exp_vs_agg is None:
-        exp_vs_agg = tournament_result.head_to_head.get(("Expansion", "Aggressive"))
-        if exp_vs_agg:
-            if exp_vs_agg.agent1_wins > exp_vs_agg.agent2_wins:
-                print("  Expansion-focused strategy beats aggressive approach")
-            else:
-                print("  Aggressive approach beats expansion-focused strategy")
+    # Check if search-based beats heuristic
+    mcts_stats = tournament_result.agent_stats.get("MCTS")
+    exp_stats = tournament_result.agent_stats.get("Expansion")
+    if mcts_stats and exp_stats:
+        if mcts_stats.win_rate > exp_stats.win_rate:
+            print("  Search-based (MCTS) outperforms heuristic expansion")
+        else:
+            print("  Heuristic expansion competitive with search-based agents")
 
-    # Check balanced vs specialists
-    balanced_stats = tournament_result.agent_stats.get("Balanced")
-    if balanced_stats:
-        specialist_avg = sum(
-            s.win_rate for name, s in tournament_result.agent_stats.items()
-            if name in ["Expansion", "Aggressive", "Defensive"]
-        ) / 3
-        if balanced_stats.win_rate > specialist_avg:
-            print("  Multi-factor evaluation outperforms single-strategy specialists")
+    # Check minimax vs others
+    minimax_stats = tournament_result.agent_stats.get("Minimax")
+    if minimax_stats:
+        print(f"  Minimax agent: {minimax_stats.win_rate:.1f}% win rate")
 
 
 def run_sample_game(verbose=True):
     """Run a sample game to demonstrate gameplay."""
     print("\n" + "=" * 60)
-    print("SAMPLE GAME: Balanced vs Expansion")
+    print("SAMPLE GAME: TerritoryRush vs Expansion")
     print("=" * 60)
 
     config = create_default_config()
-    agent1 = BalancedHeuristicAgent(seed=123)
+    agent1 = TerritoryRushAgent(seed=123)
     agent2 = ExpansionAgent(seed=456)
 
     result = run_game(agent1, agent2, config, verbose=verbose)
